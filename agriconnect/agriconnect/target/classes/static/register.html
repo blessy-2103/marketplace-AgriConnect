@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create an account — AgriConnect</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="nav-mount"></div>
+
+<div class="form-card wide">
+    <h2 class="text-center">Join AgriConnect</h2>
+    <p class="muted text-center" style="margin-top:-8px;">Set up your account as a customer or a farmer.</p>
+
+    <div id="alert" class="alert alert-error"></div>
+
+    <form id="register-form">
+        <div class="role-toggle">
+            <label>
+                <input type="radio" name="role" value="CUSTOMER" checked>
+                <span>🧺 I'm a customer</span>
+            </label>
+            <label>
+                <input type="radio" name="role" value="FARMER">
+                <span>🌾 I'm a farmer</span>
+            </label>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="name">Full name</label>
+                <input type="text" id="name" required placeholder="Anita Sharma">
+            </div>
+            <div class="field">
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" placeholder="98765 43210">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="you@example.com">
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" required minlength="6" placeholder="At least 6 characters">
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="address">Address</label>
+            <input type="text" id="address" placeholder="Street, city, state, PIN code">
+        </div>
+
+        <div id="farmer-fields" class="hidden">
+            <div class="field-row">
+                <div class="field">
+                    <label for="farmName">Farm name</label>
+                    <input type="text" id="farmName" placeholder="Green Valley Farm">
+                </div>
+                <div class="field">
+                    <label for="farmLocation">Farm location</label>
+                    <input type="text" id="farmLocation" placeholder="Village / district">
+                </div>
+            </div>
+            <div class="field">
+                <label for="bio">Tell customers about your farm</label>
+                <textarea id="bio" rows="3" placeholder="What you grow, your practices, what makes your farm special…"></textarea>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Create account</button>
+    </form>
+
+    <div class="form-foot">
+        Already have an account? <a href="/login.html">Log in</a>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    renderNav('register');
+
+    if (Auth.isLoggedIn()) {
+        window.location.href = Auth.isFarmer() ? '/farmer-dashboard.html' : '/marketplace.html';
+    }
+
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const farmerFields = document.getElementById('farmer-fields');
+    roleRadios.forEach(r => r.addEventListener('change', () => {
+        farmerFields.classList.toggle('hidden', document.querySelector('input[name="role"]:checked').value !== 'FARMER');
+    }));
+
+    const form = document.getElementById('register-form');
+    const alertBox = document.getElementById('alert');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        alertBox.classList.remove('show');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating account…';
+
+        const role = document.querySelector('input[name="role"]:checked').value;
+
+        try {
+            const res = await api('/auth/register', 'POST', {
+                name: document.getElementById('name').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value,
+                phone: document.getElementById('phone').value.trim(),
+                address: document.getElementById('address').value.trim(),
+                role: role,
+                farmName: document.getElementById('farmName').value.trim(),
+                farmLocation: document.getElementById('farmLocation').value.trim(),
+                bio: document.getElementById('bio').value.trim()
+            });
+            Auth.setToken(res.token);
+            Auth.setUser({ id: res.userId, name: res.name, email: res.email, role: res.role });
+            showToast(`Welcome to AgriConnect, ${res.name.split(' ')[0]}!`);
+            window.location.href = res.role === 'FARMER' ? '/farmer-dashboard.html' : '/marketplace.html';
+        } catch (err) {
+            alertBox.textContent = err.message;
+            alertBox.classList.add('show');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create account';
+        }
+    });
+</script>
+</body>
+</html>

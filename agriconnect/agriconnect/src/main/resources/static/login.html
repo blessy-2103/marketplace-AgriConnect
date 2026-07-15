@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — AgriConnect</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="nav-mount"></div>
+
+<div class="form-card">
+    <h2 class="text-center">Welcome back</h2>
+    <p class="muted text-center" style="margin-top:-8px;">Log in to shop fresh produce or manage your farm.</p>
+
+    <div id="alert" class="alert alert-error"></div>
+
+    <form id="login-form">
+        <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" required placeholder="you@example.com">
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Log in</button>
+    </form>
+
+    <div class="form-foot">
+        New to AgriConnect? <a href="/register.html">Create an account</a>
+    </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    renderNav('login');
+
+    if (Auth.isLoggedIn()) {
+        window.location.href = Auth.isFarmer() ? '/farmer-dashboard.html' : '/marketplace.html';
+    }
+
+    const form = document.getElementById('login-form');
+    const alertBox = document.getElementById('alert');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        alertBox.classList.remove('show');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Logging in…';
+
+        try {
+            const res = await api('/auth/login', 'POST', {
+                email: document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value
+            });
+            Auth.setToken(res.token);
+            Auth.setUser({ id: res.userId, name: res.name, email: res.email, role: res.role });
+            showToast(`Welcome back, ${res.name.split(' ')[0]}!`);
+            window.location.href = res.role === 'FARMER' ? '/farmer-dashboard.html' : '/marketplace.html';
+        } catch (err) {
+            alertBox.textContent = err.message;
+            alertBox.classList.add('show');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Log in';
+        }
+    });
+</script>
+</body>
+</html>

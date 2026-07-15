@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketplace — AgriConnect</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="nav-mount"></div>
+
+<section class="dash-header">
+    <div class="container">
+        <h1>Marketplace</h1>
+        <p>Fresh listings straight from local farms.</p>
+    </div>
+</section>
+
+<section class="section" style="padding-top:32px">
+    <div class="container">
+
+        <div class="card flex gap-16" style="margin-bottom:28px; flex-wrap:wrap;">
+            <input type="text" id="search-input" placeholder="Search produce, e.g. tomatoes, mangoes…"
+                   style="flex:2; min-width:220px; padding:11px 14px; border-radius:6px; border:1.5px solid rgba(34,40,31,0.15); font-family:var(--font-body);">
+            <select id="category-select" style="flex:1; min-width:180px; padding:11px 14px; border-radius:6px; border:1.5px solid rgba(34,40,31,0.15); font-family:var(--font-body);">
+                <option value="">All categories</option>
+            </select>
+            <button class="btn btn-primary" id="search-btn">Search</button>
+            <button class="btn btn-outline" id="clear-btn">Clear</button>
+        </div>
+
+        <div class="grid grid-4" id="product-grid">
+            <div class="empty-state">Loading fresh produce…</div>
+        </div>
+    </div>
+</section>
+
+<!-- Product detail modal -->
+<div class="modal-backdrop hidden" id="product-modal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<footer>
+    <div class="container">
+        <div>🌱 AgriConnect — Farm to customer platform</div>
+        <div><a href="/index.html">Home</a></div>
+    </div>
+</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    renderNav('marketplace');
+
+    let allProducts = [];
+
+    function productCard(p) {
+        const farmerLabel = p.farmer ? (p.farmer.farmName || p.farmer.name) : 'Local farm';
+        const lowStock = p.quantityAvailable > 0 && p.quantityAvailable <= 5;
+        const outOfStock = p.quantityAvailable <= 0;
+        return `
+        <div class="product-card">
+            <div class="product-thumb" onclick="openModal(${p.id})" style="cursor:pointer">
+                ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}">` : `<span>🌿</span>`}
+                ${p.organic ? '<span class="organic-tag">Organic</span>' : ''}
+            </div>
+            <div class="product-body">
+                <h4 style="cursor:pointer" onclick="openModal(${p.id})">${p.name}</h4>
+                <div class="product-farm">by ${farmerLabel}</div>
+                <div class="product-price">${formatMoney(p.price)} <span>/ ${p.unit}</span></div>
+                ${outOfStock ? '<div class="stock-low">Out of stock</div>' : lowStock ? `<div class="stock-low">Only ${p.quantityAvailable} ${p.unit} left</div>` : ''}
+                <div class="product-actions">
+                    <input type="number" min="1" value="1" class="qty-input" id="qty-${p.id}" ${outOfStock ? 'disabled' : ''}>
+                    <button class="btn btn-accent btn-sm" ${outOfStock ? 'disabled' : ''} onclick="addToCart(${p.id})">Add to basket</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function renderProducts(products) {
+        const grid = document.getElementById('product-grid');
+        if (!products.length) {
+            grid.innerHTML = '<div class="empty-state"><div class="icon">🌱</div>No produce matches yet. Try another search.</div>';
+            return;
+        }
+        grid.innerHTML = products.map(productCard).join('');
+    }
+
+    function addToCart(productId) {
+        const product = allProducts.find(p => p.id === productId);
+        const qtyInput = document.getElementById(`qty-${productId}`);
+        const qty = Math.max(1, parseInt(qtyInput.value || '1', 10));
+        Cart.add(product, qty);
+        showToast(`Added ${qty} ${product.unit} of ${product.name} to your basket`);
+    }
+
+    function openModal(productId) {
+        const p = allProducts.find(x => x.id === productId);
+        const farmerLabel = p.farmer ? (p.farmer.farmName || p.farmer.name) : 'Local farm';
+        document.getElementById('modal-body').innerHTML = `
+            <div class="product-thumb" style="height:220px; border-radius:12px; margin-bottom:16px;">
+                ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}" style="border-radius:12px;">` : `<span style="font-size:4rem">🌿</span>`}
+            </div>
+            <h3>${p.name} ${p.organic ? '<span class="pill pill-confirmed">Organic</span>' : ''}</h3>
+            <p class="muted">${p.description || 'No description provided.'}</p>
+            <p><strong>Farm:</strong> ${farmerLabel} ${p.farmer && p.farmer.farmLocation ? `· ${p.farmer.farmLocation}` : ''}</p>
+            <div class="product-price" style="font-size:1.3rem; margin:12px 0;">${formatMoney(p.price)} <span>/ ${p.unit}</span></div>
+            <p class="muted">${p.quantityAvailable} ${p.unit} available</p>
+            <div class="product-actions">
+                <input type="number" min="1" value="1" class="qty-input" id="modal-qty" ${p.quantityAvailable <= 0 ? 'disabled' : ''}>
+                <button class="btn btn-accent" ${p.quantityAvailable <= 0 ? 'disabled' : ''} onclick="addFromModal(${p.id})">Add to basket</button>
+            </div>
+        `;
+        document.getElementById('product-modal').classList.remove('hidden');
+    }
+
+    function addFromModal(productId) {
+        const product = allProducts.find(p => p.id === productId);
+        const qty = Math.max(1, parseInt(document.getElementById('modal-qty').value || '1', 10));
+        Cart.add(product, qty);
+        showToast(`Added ${qty} ${product.unit} of ${product.name} to your basket`);
+        closeModal();
+    }
+
+    function closeModal() {
+        document.getElementById('product-modal').classList.add('hidden');
+    }
+
+    async function loadCategories() {
+        const select = document.getElementById('category-select');
+        try {
+            const categories = await api('/categories');
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.icon || ''} ${c.name}`.trim();
+                select.appendChild(opt);
+            });
+            const params = new URLSearchParams(location.search);
+            const categoryId = params.get('categoryId');
+            if (categoryId) {
+                select.value = categoryId;
+                loadProducts();
+            }
+        } catch (e) { /* categories are optional for browsing */ }
+    }
+
+    async function loadProducts() {
+        const grid = document.getElementById('product-grid');
+        grid.innerHTML = '<div class="empty-state">Loading fresh produce…</div>';
+        const q = document.getElementById('search-input').value.trim();
+        const categoryId = document.getElementById('category-select').value;
+
+        let path = '/products';
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        if (categoryId) params.set('categoryId', categoryId);
+        if ([...params].length) path += '?' + params.toString();
+
+        try {
+            allProducts = await api(path);
+            renderProducts(allProducts);
+        } catch (e) {
+            grid.innerHTML = `<div class="empty-state">Could not load products: ${e.message}</div>`;
+        }
+    }
+
+    document.getElementById('search-btn').addEventListener('click', loadProducts);
+    document.getElementById('search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadProducts(); });
+    document.getElementById('category-select').addEventListener('change', loadProducts);
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        document.getElementById('category-select').value = '';
+        loadProducts();
+    });
+
+    loadCategories();
+    loadProducts();
+</script>
+</body>
+</html>

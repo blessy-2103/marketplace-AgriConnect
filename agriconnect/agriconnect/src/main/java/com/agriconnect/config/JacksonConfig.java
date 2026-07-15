@@ -1,0 +1,18 @@
+package com.agriconnect.config;
+
+import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class JacksonConfig {
+
+    @Bean
+    public Hibernate6Module hibernate6Module() {
+        Hibernate6Module module = new Hibernate6Module();
+        // Load the real data instead of silently returning null for
+        // lazy relationships (farmer, category, customer, etc.)
+        module.enable(Hibernate6Module.Feature.FORCE_LAZY_LOADING);
+        return module;
+    }
+}

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Farm — AgriConnect</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="nav-mount"></div>
+
+<section class="dash-header">
+    <div class="container">
+        <h1 id="farm-title">My Farm</h1>
+        <p>Manage your listings and track incoming orders.</p>
+    </div>
+</section>
+
+<section class="section" style="padding-top:32px">
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="products">My Products</button>
+            <button class="tab-btn" data-tab="orders">Incoming Orders</button>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div class="tab-panel active" id="tab-products">
+            <div class="flex-between" style="margin-bottom:20px;">
+                <h3 style="margin:0">Listings</h3>
+                <button class="btn btn-accent" onclick="openProductModal()">+ Add produce</button>
+            </div>
+            <div id="products-list">
+                <div class="empty-state">Loading your listings…</div>
+            </div>
+        </div>
+
+        <!-- ORDERS TAB -->
+        <div class="tab-panel" id="tab-orders">
+            <h3 style="margin-top:0">Orders for your produce</h3>
+            <div id="farmer-orders-list">
+                <div class="empty-state">Loading orders…</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add/Edit product modal -->
+<div class="modal-backdrop hidden" id="product-modal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeProductModal()">✕</button>
+        <h3 id="modal-title">Add produce</h3>
+        <div id="product-alert" class="alert alert-error"></div>
+        <form id="product-form">
+            <input type="hidden" id="product-id">
+            <div class="field">
+                <label for="p-name">Name</label>
+                <input type="text" id="p-name" required placeholder="e.g. Alphonso Mangoes">
+            </div>
+            <div class="field">
+                <label for="p-description">Description</label>
+                <textarea id="p-description" rows="3" placeholder="Freshness, growing method, harvest date…"></textarea>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="p-price">Price (₹)</label>
+                    <input type="number" id="p-price" min="0.01" step="0.01" required placeholder="120.00">
+                </div>
+                <div class="field">
+                    <label for="p-unit">Unit</label>
+                    <input type="text" id="p-unit" required placeholder="kg, dozen, litre…">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="p-quantity">Quantity available</label>
+                    <input type="number" id="p-quantity" min="0" required placeholder="50">
+                </div>
+                <div class="field">
+                    <label for="p-category">Category</label>
+                    <select id="p-category"><option value="">None</option></select>
+                </div>
+            </div>
+            <div class="field">
+                <label for="p-image">Image URL (optional)</label>
+                <input type="text" id="p-image" placeholder="https://…">
+            </div>
+            <div class="field">
+                <label><input type="checkbox" id="p-organic" style="width:auto; display:inline-block; margin-right:8px;">Certified / grown organic</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="product-submit-btn">Save listing</button>
+        </form>
+    </div>
+</div>
+
+<footer>
+    <div class="container">
+        <div>🌱 AgriConnect — Farm to customer platform</div>
+        <div><a href="/marketplace.html">View marketplace</a></div>
+    </div>
+</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    renderNav('dashboard');
+    const farmer = requireFarmer();
+    if (farmer) {
+        document.getElementById('farm-title').textContent = farmer.name ? `Welcome, ${farmer.name.split(' ')[0]}` : 'My Farm';
+    }
+
+    // ---- Tabs ----
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            if (btn.dataset.tab === 'orders') loadFarmerOrders();
+        });
+    });
+
+    // ---- Categories for the select ----
+    async function loadCategoryOptions() {
+        try {
+            const categories = await api('/categories');
+            const select = document.getElementById('p-category');
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.icon || ''} ${c.name}`.trim();
+                select.appendChild(opt);
+            });
+        } catch (e) { /* optional */ }
+    }
+
+    // ---- Products list ----
+    async function loadProducts() {
+        const list = document.getElementById('products-list');
+        try {
+            const products = await api('/farmer/products');
+            if (!products.length) {
+                list.innerHTML = `<div class="empty-state"><div class="icon">🌱</div>No produce listed yet. Add your first listing above.</div>`;
+                return;
+            }
+            list.innerHTML = `
+                <table>
+                    <thead><tr><th>Name</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                    ${products.map(p => `
+                        <tr>
+                            <td><strong>${p.name}</strong>${p.organic ? ' <span class="pill pill-confirmed">Organic</span>' : ''}</td>
+                            <td class="mono">${formatMoney(p.price)}/${p.unit}</td>
+                            <td>${p.quantityAvailable} ${p.unit}</td>
+                            <td>${p.active ? '<span class="pill pill-delivered">Active</span>' : '<span class="pill pill-cancelled">Removed</span>'}</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" onclick='editProduct(${JSON.stringify(p)})'>Edit</button>
+                                ${p.active ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">Remove</button>` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } catch (e) {
+            list.innerHTML = `<div class="empty-state">Could not load your listings: ${e.message}</div>`;
+        }
+    }
+
+    function openProductModal() {
+        document.getElementById('product-form').reset();
+        document.getElementById('product-id').value = '';
+        document.getElementById('modal-title').textContent = 'Add produce';
+        document.getElementById('product-alert').classList.remove('show');
+        document.getElementById('product-modal').classList.remove('hidden');
+    }
+
+    function editProduct(p) {
+        document.getElementById('product-id').value = p.id;
+        document.getElementById('p-name').value = p.name;
+        document.getElementById('p-description').value = p.description || '';
+        document.getElementById('p-price').value = p.price;
+        document.getElementById('p-unit').value = p.unit;
+        document.getElementById('p-quantity').value = p.quantityAvailable;
+        document.getElementById('p-category').value = p.category ? p.category.id : '';
+        document.getElementById('p-image').value = p.imageUrl || '';
+        document.getElementById('p-organic').checked = !!p.organic;
+        document.getElementById('modal-title').textContent = 'Edit produce';
+        document.getElementById('product-alert').classList.remove('show');
+        document.getElementById('product-modal').classList.remove('hidden');
+    }
+
+    function closeProductModal() {
+        document.getElementById('product-modal').classList.add('hidden');
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm('Remove this listing? Customers will no longer be able to order it.')) return;
+        try {
+            await api(`/farmer/products/${id}`, 'DELETE');
+            showToast('Listing removed');
+            loadProducts();
+        } catch (e) {
+            showToast(e.message, true);
+        }
+    }
+
+    document.getElementById('product-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const alertBox = document.getElementById('product-alert');
+        alertBox.classList.remove('show');
+        const btn = document.getElementById('product-submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+
+        const id = document.getElementById('product-id').value;
+        const payload = {
+            name: document.getElementById('p-name').value.trim(),
+            description: document.getElementById('p-description').value.trim(),
+            price: parseFloat(document.getElementById('p-price').value),
+            unit: document.getElementById('p-unit').value.trim(),
+            quantityAvailable: parseInt(document.getElementById('p-quantity').value, 10),
+            categoryId: document.getElementById('p-category').value || null,
+            imageUrl: document.getElementById('p-image').value.trim(),
+            organic: document.getElementById('p-organic').checked
+        };
+
+        try {
+            if (id) {
+                await api(`/farmer/products/${id}`, 'PUT', payload);
+                showToast('Listing updated');
+            } else {
+                await api('/farmer/products', 'POST', payload);
+                showToast('Listing added');
+            }
+            closeProductModal();
+            loadProducts();
+        } catch (err) {
+            alertBox.textContent = err.message;
+            alertBox.classList.add('show');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Save listing';
+        }
+    });
+
+    // ---- Incoming orders ----
+    function pillClass(status) { return 'pill pill-' + status.toLowerCase(); }
+
+    async function loadFarmerOrders() {
+        const list = document.getElementById('farmer-orders-list');
+        try {
+            const items = await api('/farmer/orders');
+            if (!items.length) {
+                list.innerHTML = `<div class="empty-state"><div class="icon">📦</div>No orders yet for your produce.</div>`;
+                return;
+            }
+            list.innerHTML = `
+                <table>
+                    <thead><tr><th>Product</th><th>Qty</th><th>Subtotal</th><th>Order</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                    ${items.map(i => `
+                        <tr>
+                            <td>${i.product ? i.product.name : 'Product'}</td>
+                            <td>${i.quantity}</td>
+                            <td class="mono">${formatMoney(i.subtotal)}</td>
+                            <td>#${i.order ? i.order.id : ''}</td>
+                            <td><span class="${pillClass(i.order ? i.order.status : 'PENDING')}">${i.order ? i.order.status : ''}</span></td>
+                            <td>
+                                ${i.order ? `
+                                <select onchange="updateOrderStatus(${i.order.id}, this.value)" style="padding:6px 8px; border-radius:6px; border:1px solid rgba(34,40,31,0.2);">
+                                    <option value="">Update…</option>
+                                    <option value="CONFIRMED">Confirmed</option>
+                                    <option value="PACKED">Packed</option>
+                                    <option value="SHIPPED">Shipped</option>
+                                    <option value="DELIVERED">Delivered</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } catch (e) {
+            list.innerHTML = `<div class="empty-state">Could not load orders: ${e.message}</div>`;
+        }
+    }
+
+    async function updateOrderStatus(orderId, status) {
+        if (!status) return;
+        try {
+            await api(`/orders/${orderId}/status`, 'PATCH', { status });
+            showToast(`Order #${orderId} marked ${status.toLowerCase()}`);
+            loadFarmerOrders();
+        } catch (e) {
+            showToast(e.message, true);
+        }
+    }
+
+    loadCategoryOptions();
+    loadProducts();
+</script>
+</body>
+</html>

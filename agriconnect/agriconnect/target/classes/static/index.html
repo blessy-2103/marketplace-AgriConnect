@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriConnect — Fresh from the farm, straight to you</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="nav-mount"></div>
+
+<section class="hero">
+    <div class="hero-inner">
+        <div>
+            <span class="eyebrow">Farm to customer, no middlemen</span>
+            <h1>The harvest, delivered by the farmer who grew it.</h1>
+            <p class="lede">AgriConnect links local farmers directly with customers nearby — fresher produce, fairer prices, and a face behind every crate.</p>
+            <div class="hero-actions">
+                <a href="/marketplace.html" class="btn btn-accent">Shop fresh produce</a>
+                <a href="/register.html" class="btn btn-outline" style="border-color:var(--paper); color:var(--paper)">Sell as a farmer</a>
+            </div>
+        </div>
+        <div>
+            <div class="seal">Farm fresh<strong>Sold direct</strong>since day one</div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <h2>Shop by category</h2>
+                <p>Everything is grown and listed by the farmer who harvested it.</p>
+            </div>
+            <a href="/marketplace.html" class="btn btn-outline btn-sm">Browse all</a>
+        </div>
+        <div class="grid grid-4" id="category-grid">
+            <div class="empty-state">Loading categories…</div>
+        </div>
+    </div>
+</section>
+
+<div class="container"><div class="route-divider"></div></div>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <h2>How it works</h2>
+                <p>Three steps from soil to your kitchen table.</p>
+            </div>
+        </div>
+        <div class="grid grid-3">
+            <div class="step">
+                <div class="num">1</div>
+                <div>
+                    <h4>Farmers list the harvest</h4>
+                    <p>Growers post what's ready to pick, with quantity and price set by them, not a middleman.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="num">2</div>
+                <div>
+                    <h4>You order what you need</h4>
+                    <p>Browse by category, add to your basket, and check out with your delivery address.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="num">3</div>
+                <div>
+                    <h4>It ships from the farm</h4>
+                    <p>The farmer prepares and ships your order, and you can track its status until it arrives.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background:var(--paper-dim)">
+    <div class="container text-center">
+        <h2>Grow your customer base, not your overhead</h2>
+        <p class="muted" style="max-width:56ch; margin:0 auto 24px;">List your produce in minutes, reach customers directly, and keep more of every sale.</p>
+        <a href="/register.html" class="btn btn-primary">Become a seller</a>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <div>🌱 AgriConnect — Farm to customer platform</div>
+        <div><a href="/marketplace.html">Marketplace</a> · <a href="/register.html">Join as a farmer</a></div>
+    </div>
+</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    renderNav('home');
+
+    async function loadCategories() {
+        const grid = document.getElementById('category-grid');
+        try {
+            const categories = await api('/categories');
+            if (!categories.length) {
+                grid.innerHTML = '<div class="empty-state">No categories yet.</div>';
+                return;
+            }
+            grid.innerHTML = categories.slice(0, 8).map(c => `
+                <div class="category-card" onclick="location.href='/marketplace.html?categoryId=${c.id}'">
+                    <div class="icon">${c.icon || '🌾'}</div>
+                    <h4>${c.name}</h4>
+                    <p>${c.description || ''}</p>
+                </div>
+            `).join('');
+        } catch (e) {
+            grid.innerHTML = '<div class="empty-state">Could not load categories. Is the backend running?</div>';
+        }
+    }
+    loadCategories();
+</script>
+</body>
+</html>
