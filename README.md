@@ -279,5 +279,6 @@ See [`database/schema.sql`](database/schema.sql) for the full DDL and seed data 
 - **Ownership checks live in the service layer**, not just the UI — a farmer can only edit/delete their own listings, and only the order's customer, the fulfilling farmer, or an admin can view/update an order.
 
 
+## Contributing
 
-## Project Structure
+Contributions, issues, and feature requests are welcome. Feel free to open an issue or submit a pull request.
