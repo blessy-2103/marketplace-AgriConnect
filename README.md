@@ -55,7 +55,7 @@ Built as a complete demonstration of a classic three-tier web stack: **Spring Bo
 | Serialization | Jackson + `jackson-datatype-hibernate6` (safe handling of lazy-loaded JPA relationships) |
 | Frontend | HTML5, CSS3 (custom design system, no framework), vanilla JavaScript |
 | Build | Maven |
-| Deployment | Docker (multi-stage build), Railway / Render / any container host |
+
 
 ---
 
