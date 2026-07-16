@@ -121,7 +121,6 @@ sequenceDiagram
 ```
 agriconnect/
 ├── pom.xml
-├── Dockerfile
 ├── database/
 │   └── schema.sql                      # reference SQL schema + seed data (manual setup)
 └── src/main/
