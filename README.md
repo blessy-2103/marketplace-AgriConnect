@@ -117,6 +117,8 @@ sequenceDiagram
     API->>DB: Delete the token row
     API-->>Browser: 200 OK
 ```
+<pre>
+```
 agriconnect/
 ├── pom.xml
 ├── Dockerfile
@@ -148,6 +150,8 @@ agriconnect/
             ├── farmer-dashboard.html        (manage listings + incoming orders)
             ├── css/style.css
             └── js/api.js, app.js
+```
+</pre>
             ---
 
 ## Getting Started
